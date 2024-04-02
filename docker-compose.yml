@@ -1,0 +1,47 @@
+version: '3.2'
+services:
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    volumes:
+    - ./:/var/www
+    environment:
+      - "DB_PORT=3306"
+      - "DB_HOST=postgresql"
+      - "XDG_CONFIG_HOME=/app"
+    ports:
+    - "8080:80"
+    links:
+      - php-fpm
+
+  php-fpm:
+    build:
+      context: ./docker/php-fpm
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/var/www
+    environment:
+      - "DB_PORT=3306"
+      - "DB_HOST=postgresql"
+      - "REDIS_PORT=6379"
+      - "REDIS_HOST=redis"
+    links:
+      - postgres
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    ports:
+    - "33061:3306"
+
+  redis:
+    image: redis:latest
+
+  rabbitmq:
+    image: rabbitmq:latest
+
+volumes:
+  database:
