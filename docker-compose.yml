@@ -1,4 +1,8 @@
-version: '3.2'
+version: '3' #3.2 предпоследняя из новых, самая новая 3.4
+
+networks: # задаем сеть
+  network:
+
 services:
   nginx:
     build:
@@ -7,48 +11,69 @@ services:
     volumes:
     - ./:/var/www
     environment:
-      - "DB_PORT=3306"
-      - "DB_HOST=postgresql"
-      - "XDG_CONFIG_HOME=/app"
+      - "DB_PORT=${DB_PORT}"
+      - "DB_HOST=${DB_HOST}"
+      - "XDG_CONFIG_HOME=${XDG_CONFIG_HOME}"
     ports:
-    - "8080:80"
-    links:
-      - php-fpm
+      - "8080:80"
+    networks:
+      - network
 
   php-fpm:
     build:
       context: ./docker/php-fpm
       dockerfile: Dockerfile
+    user: "${PHP_FPM_USER}:${PHP_FPM_GROUP}" # create user and group
     volumes:
       - ./:/var/www
     environment:
-      - "DB_PORT=3306"
-      - "DB_HOST=postgresql"
-      - "REDIS_PORT=6379"
-      - "REDIS_HOST=redis"
-    links:
-      - postgres
+      - "DB_PORT=${DB_PORT}"
+      - "DB_HOST=${DB_HOST}"
+      - "REDIS_PORT=${REDIS_PORT}"
+      - "REDIS_HOST=${REDIS_HOST}"
+    networks:
+      - network
 
   postgres:
     image: postgres:latest
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
     - "33061:3306"
+    networks:
+      - network
 
   redis:
     image: redis:latest
-    
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"] # устанавливаем пароль для Redis
+    volumes: # задаём том для redis
+      - redis_data:/data
+    networks:
+      - network
+
   redis-ui:
     image: rediscommander/redis-commander:latest
     ports:
       - "8081:8081"  
     environment:
-      - REDIS_HOST=redis
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    networks:
+      - network
 
   rabbitmq:
-    image: rabbitmq:latest
+    image: rabbitmq:management 
+    ports:
+      - "15672:15672"  # проброс порта UI RabbitMQ
+      - "5672:5672"  # проброс порта для обмена сообщениями
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASSWORD} # устанавливаем пароль для RabbitMQ
+    networks:
+      - network
 
 volumes:
   database:
+  redis_data:
