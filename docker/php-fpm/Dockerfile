@@ -1,32 +1,30 @@
-FROM php:8.2-fpm 
+FROM phpdockerio/php73-fpm:latest
+WORKDIR "/application"
 
-RUN apt-get update && apt-get install -y \
-    libmcrypt-dev \
-    libpng-dev \
-    mariadb-client \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libgd-dev \
-    && docker-php-ext-install pdo_pgsql
+# RUN mkdir -p /run/php-fpm \
+#     && chown -R user:user /run/php-fpm
+# RUN useradd -m user \
+#     && echo "user:password" | chpasswd
+# USER user
 
-RUN docker-php-ext-configure exif
-RUN docker-php-ext-install exif
-RUN docker-php-ext-enable exif
+# Создаем пользователя и группу
+RUN groupadd -g 1000 user && \
+    useradd -u 1000 -g user -m user
 
-RUN docker-php-ext-configure gd --with-freetype=/usr/include/ --with-webp=/usr/include/  --with-jpeg=/usr/include/
-RUN docker-php-ext-install -j$(nproc) gd
-
-RUN apt install jpegoptim optipng pngquant gifsicle libavif-bin -y
-
-RUN apt-get install -y wget unzip curl
-RUN curl -sS https://getcomposer.org/installer |php
-RUN mv composer.phar /usr/local/bin/composer
-
-COPY ./conf.d /usr/local/etc/php/conf.d/
-
-WORKDIR /var/www
+# Меняем владельца для нужного каталога
+RUN mkdir -p /run/php-fpm && \
+    chown -R user:user /run/php-fpm
 
 
+# Fix debconf warnings upon build
+ARG DEBIAN_FRONTEND=noninteractive
 
+# Install selected extensions and other stuff
+RUN apt-get update \
+    && apt-get -y --no-install-recommends install  php7.3-pgsql php7.3-gd php-redis \
+    && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+
+# Install git
+RUN apt-get update \
+    && apt-get -y install git \
+    && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
