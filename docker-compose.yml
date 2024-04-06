@@ -1,48 +1,61 @@
-version: '3' #3.2 предпоследняя из новых, самая новая 3.4
+version: '3'
 
 networks: # задаем сеть
   network:
 
 services:
+
+  app:
+    container_name: app
+    build: 
+      context: ./app
+      dockerfile: Dockerfile
+    image: php-laravel-7.0
+    working_dir: /var/www
+    ports:
+      - "8000:8000"
+    volumes: 
+      - ./:/var/www
+    networks: 
+      - network
+
   nginx:
     build:
       context: ./docker/nginx
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile # used nginx:alphine
     volumes:
     - ./:/var/www
     environment:
       - "DB_PORT=${DB_PORT}"
       - "DB_HOST=${DB_HOST}"
-      - "XDG_CONFIG_HOME=${XDG_CONFIG_HOME}"
     ports:
       - "8080:80"
     networks:
       - network
 
-  php-fpm:
-    build:
-      context: ./docker/php-fpm
-      dockerfile: Dockerfile
-    user: "${PHP_FPM_USER}:${PHP_FPM_GROUP}" # create user and group
-    volumes:
-      - ./:/var/www
-    environment:
-      - "DB_PORT=${DB_PORT}"
-      - "DB_HOST=${DB_HOST}"
-      - "REDIS_PORT=${REDIS_PORT}"
-      - "REDIS_HOST=${REDIS_HOST}"
-    networks:
-      - network
-
   postgres:
-    image: postgres:latest
+    build:
+      context: ./docker/pgsql
+      dockerfile: Dockerfile
+    volumes:
+      - database:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
-    - "33061:3306"
+    - "5432:5432"
     networks:
       - network
+
+  php:
+    build: 
+      context: ./docker/php
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    volumes:
+      - .:/var/www/
 
   redis:
     image: redis:latest
